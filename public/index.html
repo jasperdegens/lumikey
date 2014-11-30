@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+  </head>
+  <body>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var socket = io();
+
+    function handleMidiNote(midiData){
+      var note = midiData.note;
+      switch (note[0]){
+        //note on
+        case 144:
+          console.log(note[1]);
+          break;
+
+        //note off
+        case 128: 
+          // console.log
+          break;
+
+        default:
+          break;
+        }
+    }
+    
+    // add socket listeners   
+    socket.on('midiNote', handleMidiNote);
+    socket.on('command', function(data){
+        console.log(data);
+      }); 
+  </script>
+
+  </body>
+</html>
