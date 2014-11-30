@@ -3,11 +3,24 @@
   <head>
     <title>Socket.IO chat</title>
   </head>
-  <body>
+  <body id="body" style="background-color:black">
+  
 
+  <script src="/javascripts/visualizer.js"></script>
+  <script>
+    vz.start({'width' : 800, 'height': 500, 'screen': document.getElementById('body')});
+  </script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     var socket = io();
+
+    function triggerHit(noteNumber){
+      var scaledNote = noteNumber % 10;
+      vz.detector.bandLikelihood[scaledNote] = 10;
+      setTimeout(function(){
+        vz.detector.bandLikelihood[scaledNote] = 0;
+      }, 10);
+    }
 
     function handleMidiNote(midiData){
       var note = midiData.note;
@@ -15,6 +28,7 @@
         //note on
         case 144:
           console.log(note[1]);
+          triggerHit(note[1]);
           break;
 
         //note off
@@ -27,12 +41,12 @@
         }
     }
     
+
     // add socket listeners   
     socket.on('midiNote', handleMidiNote);
     socket.on('command', function(data){
         console.log(data);
       }); 
   </script>
-
   </body>
 </html>
