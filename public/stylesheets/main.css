@@ -1,0 +1,20 @@
+header{
+  color: #eeeeee;
+  -webkit-transition: all 1.5s ease;
+     -moz-transition: all 1.5s ease;
+      -ms-transition: all 1.5s ease;
+       -o-transition: all 1.5s ease;
+          transition: all 1.5s ease;
+  opacity: 1;
+}
+
+
+#options{
+  width: 200px;
+  position: absolute;
+  right: 0;
+}
+
+.fadeOut{
+  opacity: 0;
+}

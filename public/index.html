@@ -2,24 +2,44 @@
 <html>
   <head>
     <title>Socket.IO chat</title>
+    <link rel="stylesheet" href="/stylesheets/main.css">
   </head>
   <body id="body" style="background-color:black">
+  <header>
+    <div id="title">
+      <h1>LumiKey</h1>
+      <h2>interActive Music</h2>
+    <div>
+  </header>
+  <div id="options">
+  </div>
+
+
+
   
-
   <script src="/javascripts/visualizer.js"></script>
-  <script>
-    vz.start({'width' : 800, 'height': 500, 'screen': document.getElementById('body')});
-  </script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/javascripts/timbre.js"></script>
   <script>
+    setTimeout(function(){
+      document.getElementsByTagName('header')[0].setAttribute("class", "fadeOut");
+      }, 4000);
+    vz.start({'width' : 1400, 'height': 700, 'notes' : 40, 'screen': document.getElementById('body')});
     var socket = io();
+    var offset = 40;
 
-    function triggerHit(noteNumber){
-      var scaledNote = noteNumber % 10;
-      vz.detector.bandLikelihood[scaledNote] = 10;
-      setTimeout(function(){
-        vz.detector.bandLikelihood[scaledNote] = 0;
-      }, 10);
+    var synth = T("OscGen", {wave:"saw", mul:0.25}).play();
+    var midicps = T("midicps");
+
+
+    function noteOn(noteNumber){
+      vz.triggerHit(noteNumber);
+      // synth.noteOnWithFreq(midicps.at(noteNumber), 100);
+    }
+
+    function noteOff(noteNumber){
+      vz.field.noteVelocity[noteNumber % vz.field.notes] = 0;
+      // synth.noteOff(noteNumber, 100);
     }
 
     function handleMidiNote(midiData){
@@ -27,13 +47,21 @@
       switch (note[0]){
         //note on
         case 144:
-          console.log(note[1]);
-          triggerHit(note[1]);
+          noteOn(note[1]-offset);
           break;
 
         //note off
         case 128: 
+          noteOff(note[1]-offset);
           // console.log
+          break;
+
+        case 224:
+          if(note[2] === 64){
+            vz.resetColor();
+          } else {
+            vz.shiftColor(note[2]);
+          }
           break;
 
         default:
@@ -41,6 +69,12 @@
         }
     }
     
+    document.onkeydown = function(event){
+      noteOn(event.keyCode);
+    };
+    document.onkeyup = function(event){
+      noteOff(event.keyCode);
+    }
 
     // add socket listeners   
     socket.on('midiNote', handleMidiNote);

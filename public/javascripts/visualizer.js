@@ -31,6 +31,9 @@ var vz = {
   startTime : 0, // start time
   now       : 0, // current time
   frames    : 0, // number of frames rendered
+  maxHeight : 20,
+  jitter    : 2,
+  rho       : (1/(Math.sqrt(2*Math.PI)))*Math.E,
   options: { },
   audio: {
     audio: function (event) {
@@ -52,11 +55,40 @@ var vz = {
  */
 vz.spawn = function(i) {
   var t = i / vz.particles;
-  var r = vz.radius + Math.random();
-  vz.px[i] = vz.field.width * 0.5 + r * Math.cos(t * 2 * Math.PI);
-  vz.py[i] = vz.field.height * 0.5 + r * Math.sin(t * 2 * Math.PI);
-  vz.pc[i] = t;
+  
+
+  var binF = (i+1)*vz.field.notes/vz.particles;
+  var offset = binF - Math.floor(binF) - .5;
+  vz.px[i] = vz.ww * t + offset*20;
+  // console.log(offset);
+
+  // draw as circle
+  // var r = vz.radius + Math.random();
+  // vz.px[i] = vz.field.width * 0.5 + r * Math.cos(t * 2 * Math.PI);
+  // vz.py[i] = vz.field.height * 0.5 + r * Math.sin(t * 2 * Math.PI);
+  
+  // draw as line
+  // vz.px[i] = vz.ww * t;
+  vz.py[i] = vz.pHeight + Math.random()*10;
+  vz.pc[i] = t % vz.particles;
   vz.pl[i] = vz.lifetime;
+};
+
+// shift color according to mod wheel
+// d will be range 0-127
+vz.shiftColor = function(d) {
+  for (var i = 0; i < vz.particles; i++){
+    var t = i / vz.particles;
+    vz.pc[i] = t * 0.5 + d/255;
+  }
+};
+
+vz.resetColor = function(){
+  var t = i / vz.particles;
+  for (var i=0; i < vz.particles; i++){
+    vz.pc[i] = t;
+  }
+  console.log('reset');
 };
 
 /**
@@ -66,11 +98,18 @@ vz.spawn = function(i) {
  */
 vz.pulse = function(min, max) {
   for (var i = 0; i < vz.particles; i++) {
-    if (Math.random() < 0.5 && min < vz.pc[i] && vz.pc[i] < max) {
+    if (Math.random() < 0.2 && min < vz.pc[i] && vz.pc[i] < max) {
       // subtract random number so particles don't all die at once
       vz.pl[i] = vz.lifetime - Math.floor(Math.random() * 15);
     }
   }
+};
+
+vz.triggerHit = function(noteNumber){
+  var noteS = noteNumber % vz.field.notes;
+  vz.field.noteVelocity[noteS] = 1;
+  // vz.pulse(noteS / vz.field.notes, Math.min(1, noteS / vz.field.notes + 0.1));
+  // console.log(noteS / vz.field.notes);
 };
 
 /**
@@ -84,30 +123,76 @@ vz.animate = function() {
   vz.now = new Date();
   vz.time = vz.now - vz.startTime;
   
-  vz.updateVelocities();
-  vz.field.update();
+  // vz.updateVelocities();
+  // vz.field.updateVelocities();
 
   // update particle positions and lifetime
-  var jitter, vx, vy;
+  var vx, vy, newY;
   for (var i = 0; i < vz.particles; i++) {
     // add jitter to old particles for diffuse smoke effect
-    jitter = (1 - vz.pl[i] / vz.lifetime);
-    vx = 10 * vz.field.getXVelocity(vz.px[i], vz.py[i]);
-    vy = 10 * vz.field.getYVelocity(vz.px[i], vz.py[i]);
-    vz.px[i] += vx + (Math.random() - 0.5) * jitter;
-    vz.py[i] += vy + (Math.random() - 0.5) * jitter;
+    // jitter = 2;//(1 - vz.pl[i] / vz.lifetime);
+    // vx = 10 * vz.field.getXVelocity(vz.px[i], vz.py[i]);
+    // vy = 0.2 * vz.field.getYVelocity(vz.px[i], vz.py[i]);
+    // vz.px[i] += vx + (Math.random() - 0.5) * jitter;
+    // vy = vz.field.getYVelocity(vz.px[i], vz.py[i]);
+    // if (vy === undefined) {
+    //   console.log(vz.px[i] + ' and y: ' +  vz.py[i]);
+    //   return;
+    // }
+
+    //update pixel Y
+    newY = 0;
+    var oldY = vz.py[i];
+    var binF = (i+1)*vz.field.notes/vz.particles;
+    var bin = Math.floor(binF);
+    if(vz.field.noteVelocity[bin%vz.field.notes]){// ||  vz.field.noteVelocity[--bin%vz.field.notes] || vz.field.noteVelocity[++++bin%vz.field.notes]){
+      var maxY = (vz.maxHeight - oldY)  * Math.pow(vz.rho, -Math.pow((binF - 0.5 - bin), 2)*70);//rho*binF*slopeEQ;
+      newY = maxY * Math.random();
+      // if(i === 400 || i === 3000){
+      //   console.log(newY);
+      // }
+      // vz.pl[i] = vz.lifetime;
+      // console.log(oldY);
+    } else if(oldY < vz.pHeight-8){
+      // newY = Math.max(newY - oldY * .5, -10);
+      // newY = oldY;
+      // vz.pc[i] = 0;
+      newY = 1;
+      // console.log(oldY);
+
+    }
+    // if(newY > 0){
+    //   console.log(newY);
+    // }
+    vz.py[i] +=  newY + (Math.random() - 0.5) * vz.jitter;
     vz.pl[i]--;
-    if (vz.pl[i] < 1 || vz.px[i] < 1 || vz.px[i] > vz.field.width || vz.py[i] < 1 || vz.py[i] > vz.field.height - 1) {
+    if (vz.pl[i] < 1 || vz.py[i] < 1 || vz.py[i] > vz.wh - 1) {
       vz.spawn(i);
     }
+    // vz.pl[i]--;
+    // vz.py[i] -= 1; //vz.field.getYVelocity(vz.px[i], vz.py[i]);
+    // if (vy + vz.py[i] < 0){
+    //   vz.spawn(i);
+    // }
+    // if (vz.pl[i] < 1 || vz.px[i] < 1 || vz.px[i] > vz.field.width || vz.py[i] < 1 || vz.py[i] > vz.field.height - 1) {
+    //   vz.spawn(i);
+    // }
+
   }
+
+  // vz.frames++;
+  // if(frames % 100 == 0){
+  //   vz.pulse(.5, .7);
+  // }
 
   if (vz.showParticles)
     vz.display.renderParticles(vz.field, vz.px, vz.py, vz.pc, vz.pl);
   
-  if (vz.showVelocity)
-    vz.display.renderVelocityField(vz.field);
+  // if (vz.showVelocity)
+    // vz.display.renderVelocityField(vz.field);
 
+  // console.log(1000 / vz.time);
+  vz.startTime = vz.now;
 };
 
 vz.updateVelocities = function() {
@@ -118,26 +203,34 @@ vz.updateVelocities = function() {
   // console.log("band likelihood: " + vz.detector.bandLikelihood);
   var offset = vz.now * 0.002;
   var x, y, theta;
-  vz.radius = (vz.detector.beatLikelihood > explode) ? 15 : 8;
-  for (var i = 0; i < vz.detector.bands; i++) {
-    theta = i / vz.detector.bands * 2 * Math.PI + offset;
-    x = Math.floor(vz.field.width / 2 + vz.radius * Math.cos(theta));
-    y = Math.floor(vz.field.height / 2 + vz.radius * Math.sin(theta));
-    var likelihood = vz.detector.bandLikelihood[i];
-    if (likelihood > jet) {
-      var v = likelihood * 2;
-      if (v > maxVelocity) v = maxVelocity;
-      var vx = vz.field.getXVelocity(x, y) + v * Math.cos(theta);
-      var vy = vz.field.getYVelocity(x, y) + v * Math.sin(theta);
-      vz.field.setVelocity(x, y, vx, vy);
-      if (bigJet < likelihood) {
-        var min = (i / vz.detector.bands) - 0.01;
-        var max = min + 0.02;
-        vz.pulse(min, max);
-      }
-    } 
-  }  
+  // vz.radius = (vz.detector.beatLikelihood > explode) ? 15 : 8;
+  // for (var i = 0; i < vz.detector.bands; i++) {
+  //   theta = i / vz.detector.bands * 2 * Math.PI + offset;
+  //   x = Math.floor(vz.field.width / 2 + vz.radius * Math.cos(theta));
+  //   y = Math.floor(vz.field.height / 2 + vz.radius * Math.sin(theta));
+  //   var likelihood = vz.detector.bandLikelihood[i];
+  //   if (likelihood > jet) {
+  //     var v = likelihood * 2;
+  //     if (v > maxVelocity) v = maxVelocity;
+  //     var vx = vz.field.getXVelocity(x, y) + v * Math.cos(theta);
+  //     var vy = vz.field.getYVelocity(x, y) + v * Math.sin(theta);
+  //     vz.field.setVelocity(x, y, vx, vy);
+  //     if (bigJet < likelihood) {
+  //       var min = (i / vz.detector.bands) - 0.01;
+  //       var max = min + 0.02;
+  //       vz.pulse(min, max);
+  //     }
+  //   } 
+  // }
+  
+  // for (var i = 0; i < vz.detector.notes; i++){
+    
+  //   // TODO update velocities
+  //   var vx = vz.field.getXVelocity(x, y) + v * Math.cos(theta);
+  //   var vy = vz.field.getYVelocity(x, y) + v * Math.sin(theta);
+  // }  
 };
+
 
 /**
  * Start visualization
@@ -148,30 +241,37 @@ vz.start = function (options) {
   vz.screen = options.screen;
   vz.ww = options.width;
   vz.wh = options.height;
+  vz.notes = options.notes ? options.notes : 66;
+  vz.pHeight = vz.wh*7/8;
 
   vz.canvas = document.createElement('canvas');
   vz.screen.appendChild(vz.canvas);
 
   vz.canvas.width = options.width - 20;
-  vz.canvas.height = options.height - 20; 
+  vz.canvas.height = options.height - 20;
 
   vz.context = vz.canvas.getContext('2d');
   vz.context.globalCompositeOperation = 'destination-over';
 
+
   vz.px = new Float32Array(vz.particles);
   vz.py = new Float32Array(vz.particles);
   vz.pc = new Float32Array(vz.particles);
+  vz.u  = new Float32Array(vz.particles);
+  vz.v  = new Float32Array(vz.particles);
   vz.pl = new Int16Array(vz.particles);
 
-  vz.field = new FluidField(vz.canvas);
+  vz.field = new VelocityField(vz.canvas);
   vz.display = new FluidFieldDisplay(vz.field, vz.canvas);
-  vz.detector = new BeatDetector();
+  // vz.detector = new VelocityField();
 
   vz.startTime = new Date();
 
   for (var i = 0; i < vz.particles; i++) {
     vz.spawn(i);
     vz.pl[i] = Math.floor(Math.random() * vz.lifetime);
+    vz.v[i] = 0;
+    vz.u[i] = 5;
   }
 
   vz.initialized = true;
@@ -227,92 +327,161 @@ vz.resize = function (width, height) {
 // exports.audio   = vz.audio;
 
 
-function BeatDetector() {
+// function BeatDetector() {
 
-  this.integration = 10;
+//   this.integration = 10;
 
-  this.bands = 10;
-  this.bandHistory = [];
-  this.bandLikelihood = [];
+//   this.bands = 10;
+//   this.bandHistory = [];
+//   this.bandLikelihood = [];
 
-  this.levelHistory = [];
-  this.beatLikelihood = 0;
+//   this.levelHistory = [];
+//   this.beatLikelihood = 0;
 
-  for (var i = 0; i < this.bands; i++) {
-    this.bandHistory[i] = []; 
-    this.bandLikelihood[i] = 0;
+//   for (var i = 0; i < this.bands; i++) {
+//     this.bandHistory[i] = []; 
+//     this.bandLikelihood[i] = 0;
+//   }
+
+// }
+
+function VelocityField() {
+  this.notes = vz.notes;
+  this.noteVelocity = [];
+
+  this.width = vz.ww;       // mesh size x
+  this.height = vz.wh;       // mesh size y
+
+  this.size = (this.width + 2) * (this.height + 2);
+  this.rowSize = this.width + 2;
+  this.interpolate = false;
+  this.decay = 0.5;
+  this.u = new Float32Array(this.size);
+  this.v = new Float32Array(this.size);
+
+
+
+  // init all note velocities to 0
+  for (var i = 0; i < this.notes; i++){
+    this.noteVelocity[i] = 0;
   }
-
+  // set all velocities to 1 to see what happens
+  for (var i = 0; i < this.size; i++){
+    this.u[i] = 0;
+    this.v[i] = 0;
+  }
 }
 
-
-BeatDetector.prototype.process = function(audio) {
-  
-  // compute sample mean
-  function computeMean(arr) {
-    var sum = 0;
-    for (var i = 0; i < arr.length; i++) {
-      sum += arr[i];
-    }
-    return sum / arr.length;
+VelocityField.prototype.updateVelocities = function(){
+  for (var i = 0; i < this.size; i++){
+    var oldY = this.v[i];
+    var noteBin = Math.floor(i*this.notes/this.rowSize);
+    var newV = -1* Math.abs((oldY * this.decay + this.noteVelocity[noteBin % this.notes]));
+    this.v[i] = newV > 0 ? 0 : newV;
   }
-
-  // compute sample standard deviation
-  function computeStdev(arr, mean) {
-    var sum = 0;
-    for (var i = 0; i < arr.length; i++) {
-      sum += (arr[i] - mean) * (arr[i] - mean);
-    }
-    return Math.sqrt(sum / arr.length);
+  for(var i = 0; i < this.notes; i++){
+    this.noteVelocity[i] = 0;
   }
+};
 
-  // convert audio.spectrum into mono for easier processing
-  var spectrum = [];
-  for (var i = 0; i < audio.spectrum.left.length; i++) {
-    spectrum[i] = (parseFloat(audio.spectrum.left[i]) + parseFloat(audio.spectrum.right[i])) / 2;
-    // spectrum[i] = Math.exp(spectrum[i]);
-  }
-
-  // get average level weighted to emphasize low freq
-  var average = 0;
-  for (var i = 0; i < spectrum.length; i++) {
-    var weight = 2 - (i / spectrum.length);
-    average += weight * spectrum[i];
-  }
-  average /= spectrum.length;
-
-  // if we have fully populated integration window, do analysis
-  if (this.levelHistory.length == this.integration) {
-    var mean = computeMean(this.levelHistory);
-    var stdev = computeStdev(this.levelHistory, mean);
-    this.beatLikelihood = Math.abs(average - mean) / (stdev + 0.01);
-    this.levelHistory.shift();
+VelocityField.prototype.getXVelocity = function(x, y) {
+  if (this.interpolate) {
+    var x_ = Math.floor(x);
+    var y_ = Math.floor(y);
+    var center = this.u[(x_ + 1) + (y_ + 1) * this.rowSize]; 
+    var right = this.u[(x_ + 2) + (y_ + 1) * this.rowSize];
+    var up = this.u[(x_ + 1) + (y_ + 2) * this.rowSize];
+    var dx = x - x_;
+    var dy = y - y_;
+    return (center * dx + (1 - dx) * right + center * dy + (1 - dy) * up) / 2;
   } 
-  // add current average level to history
-  this.levelHistory.push(average);
-
-  // analyze per band
-  var bandsPerBin = spectrum.length / this.bands; // number of spectrum bands per analysis band
-  for (var i = 0; i < this.bands; i++) {
-    var current = 0;
-    for (var j = 0; j < bandsPerBin; j++) {
-      current += spectrum[i * bandsPerBin + j] / bandsPerBin;
-    }
-    // if we have a full integration window, do analysis
-    if (this.bandHistory[i].length == this.integration) {
-      var mean = computeMean(this.bandHistory[i]);
-      var stdev = computeStdev(this.bandHistory[i], mean);    
-      console.log(mean + " " + stdev);
-
-      this.bandLikelihood[i] = Math.abs(current - mean) / (stdev + 0.01);
-      this.bandHistory[i].shift();
-    }
-    // add current band level to history
-    this.bandHistory[i].push(current);
-    console.log(this.bandHistory[i].length);
-  }
-  
+  return this.u[(x + 1) + (y + 1) * this.rowSize];
 }
+
+VelocityField.prototype.getYVelocity = function(x, y) {
+  var x_ = Math.floor(x);
+  var y_ = Math.floor(y);
+  if (this.interpolate) {
+    // var x_ = Math.floor(x);
+    // var y_ = Math.floor(y);
+    var center = this.v[(x_ + 1) + (y_ + 1) * this.rowSize]; 
+    var right = this.v[(x_ + 2) + (y_ + 1) * this.rowSize];
+    var up = this.v[(x_ + 1) + (y_ + 2) * this.rowSize];
+    var dx = x - x_;
+    var dy = y - y_;
+    return (center * dx + (1 - dx) * right + center * dy + (1 - dy) * up) / 2;
+  }
+  return this.v[(x_ + 1) + (y_ + 1) * this.rowSize];
+  // return 1;
+}
+
+// BeatDetector.prototype.process = function(audio) {
+  
+//   // compute sample mean
+//   function computeMean(arr) {
+//     var sum = 0;
+//     for (var i = 0; i < arr.length; i++) {
+//       sum += arr[i];
+//     }
+//     return sum / arr.length;
+//   }
+
+//   // compute sample standard deviation
+//   function computeStdev(arr, mean) {
+//     var sum = 0;
+//     for (var i = 0; i < arr.length; i++) {
+//       sum += (arr[i] - mean) * (arr[i] - mean);
+//     }
+//     return Math.sqrt(sum / arr.length);
+//   }
+
+//   // convert audio.spectrum into mono for easier processing
+//   var spectrum = [];
+//   for (var i = 0; i < audio.spectrum.left.length; i++) {
+//     spectrum[i] = (parseFloat(audio.spectrum.left[i]) + parseFloat(audio.spectrum.right[i])) / 2;
+//     // spectrum[i] = Math.exp(spectrum[i]);
+//   }
+
+//   // get average level weighted to emphasize low freq
+//   var average = 0;
+//   for (var i = 0; i < spectrum.length; i++) {
+//     var weight = 2 - (i / spectrum.length);
+//     average += weight * spectrum[i];
+//   }
+//   average /= spectrum.length;
+
+//   // if we have fully populated integration window, do analysis
+//   if (this.levelHistory.length == this.integration) {
+//     var mean = computeMean(this.levelHistory);
+//     var stdev = computeStdev(this.levelHistory, mean);
+//     this.beatLikelihood = Math.abs(average - mean) / (stdev + 0.01);
+//     this.levelHistory.shift();
+//   } 
+//   // add current average level to history
+//   this.levelHistory.push(average);
+
+//   // analyze per band
+//   var bandsPerBin = spectrum.length / this.bands; // number of spectrum bands per analysis band
+//   for (var i = 0; i < this.bands; i++) {
+//     var current = 0;
+//     for (var j = 0; j < bandsPerBin; j++) {
+//       current += spectrum[i * bandsPerBin + j] / bandsPerBin;
+//     }
+//     // if we have a full integration window, do analysis
+//     if (this.bandHistory[i].length == this.integration) {
+//       var mean = computeMean(this.bandHistory[i]);
+//       var stdev = computeStdev(this.bandHistory[i], mean);    
+//       console.log(mean + " " + stdev);
+
+//       this.bandLikelihood[i] = Math.abs(current - mean) / (stdev + 0.01);
+//       this.bandHistory[i].shift();
+//     }
+//     // add current band level to history
+//     this.bandHistory[i].push(current);
+//     console.log(this.bandHistory[i].length);
+//   }
+  
+// }
 
 function FluidField() {
   this.iterations = 10;   // solver iterations
@@ -602,26 +771,7 @@ FluidFieldDisplay.prototype.clear = function() {
   this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 }
 
-FluidFieldDisplay.prototype.renderVelocityField = function() {
-  this.context.save();
-  this.context.lineWidth = 1;
-  var wscale = this.canvas.width / this.field.width;
-  var hscale = this.canvas.height / this.field.height;
-  this.context.strokeStyle = 'white';
-  var scale = 20;
-  this.context.beginPath();
-  for (var x = 0; x < this.field.width; x++) {
-    for (var y = 0; y < this.field.height; y++) {
-      var vx = this.field.getXVelocity(x, y);
-      var vy = this.field.getYVelocity(x, y);
-      this.context.moveTo(x * wscale + 0.5 * wscale, y * hscale + 0.5 * hscale);
-      this.context.lineTo((x + 0.5 + scale * vx) * wscale,
-                          (y + 0.5 + scale * vy) * hscale);        
-    }
-  }
-  this.context.stroke();
-  this.context.restore();
-}
+
 
 FluidFieldDisplay.prototype.renderParticles = function(field, px, py, pc, pl) {
   this.image = this.context.createImageData(this.canvas.width, this.canvas.height);
@@ -634,8 +784,8 @@ FluidFieldDisplay.prototype.renderParticles = function(field, px, py, pc, pl) {
     var cy = Math.floor(py[i] * hscale);
     var base = 4 * (cy * this.canvas.width + cx);
     h = pc[i];
-    s = pl[i] / vz.lifetime;
-    v = s * s;
+    s = 1-Math.min(pl[i] / (vz.lifetime*1.9), 1);
+    v = 1;//pl[i] / vz.lifetime;
     { // hsv -> rgb, inlined for performance
       j = Math.floor(h * 6);
       f = h * 6 - j;
