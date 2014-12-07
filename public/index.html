@@ -18,11 +18,19 @@
       </div>
       <div class="row">
         <label>rho:</label>
-        <input type="range" name="rho" min="0" max="100" value="70" oninput="optionChanged(this)">
+        <input type="range" name="rho" min="0" max="500" value="70" oninput="optionChanged(this)">
       </div>
       <div class="row">
         <label>release speed:</label>
         <input type="range" name="decay" min="0" max="20" value="2" oninput="optionChanged(this)">
+      </div>
+      <div class="row">
+        <label>attack speed:</label>
+        <input type="range" name="attack" min="0.1" max="3" value="1" step="0.1" oninput="optionChanged(this)">
+      </div>
+      <div class="row">
+        <label>lifetime:</label>
+        <input type="range" name="lifetime" min="5" max="500" value="100" oninput="optionChanged(this)">
       </div>
     </div>
   </header>
@@ -48,12 +56,12 @@
 
     function noteOn(noteNumber){
       vz.noteOn(noteNumber);
-      // synth.noteOnWithFreq(midicps.at(noteNumber), 100);
+      synth.noteOnWithFreq(midicps.at(noteNumber), 100);
     }
 
     function noteOff(noteNumber){
       vz.noteOff(noteNumber);
-      // synth.noteOff(noteNumber, 100);
+      synth.noteOff(noteNumber, 100);
     }
 
     function handleMidiNote(midiData){
@@ -70,6 +78,7 @@
           // console.log
           break;
 
+        // pitch wheel
         case 224:
           if(note[2] === 64){
             vz.resetColor();
@@ -77,6 +86,15 @@
             vz.shiftColor(note[2]);
           }
           break;
+
+        // modwheel + data wheel
+        case 176:
+          // modwhee;
+          if (note[1] == 1) {
+            vz.attack = note[2]*3/127;
+          } else if (note[1] == 7) {
+            vz.rho = note[2]*4 / 127;
+          }
 
         default:
           break;
@@ -102,6 +120,15 @@
 
         case 'decay':
           vz.releaseSpeed = parseInt(elem.value);
+          break;
+
+        case 'attack':
+          vz.attack = parseFloat(elem.value);
+          break;
+
+        case 'lifetime':
+          vz.lifetime = parseInt(elem.value);
+          break;
 
         default:
           break;

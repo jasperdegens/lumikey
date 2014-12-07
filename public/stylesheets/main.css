@@ -1,5 +1,6 @@
 body{
   font-family: 'Open Sans', sans-serif;
+  position: fixed;
 }
 
 header{
@@ -11,7 +12,6 @@ header{
           transition: all 0.5s ease;
   opacity: 1;
   margin-left: 50px;
-  padding-top: 10px;
 }
 
 h1{
@@ -30,6 +30,7 @@ h2{
   font-weight: 700;
   font-size: 15px;
   letter-spacing: 3px;
+  margin-top: 3px;
   background-image: -webkit-gradient( linear, left top, right top, color-stop(0, #f22), color-stop(0.15, #f2f), color-stop(0.3, #22f), color-stop(0.45, #2ff), color-stop(0.6, #2f2),color-stop(0.75, #2f2), color-stop(0.9, #ff2), color-stop(1, #f22) );
   background-image: gradient( linear, left top, right top, color-stop(0, #f22), color-stop(0.15, #f2f), color-stop(0.3, #22f), color-stop(0.45, #2ff), color-stop(0.6, #2f2),color-stop(0.75, #2f2), color-stop(0.9, #ff2), color-stop(1, #f22) );
   -webkit-background-clip: text;
@@ -60,7 +61,7 @@ hr{
   -webkit-border-bottom-left-radius: 10px;
   -moz-border-radius-bottomleft: 10px;
   border-bottom-left-radius: 10px;
-  background-color: #171717;
+  background-color: rgba(60, 60, 60, .2);/*#171717;*/
 }
 
 input[type="range"]{

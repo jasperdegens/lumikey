@@ -28,6 +28,7 @@ var vz = {
   rho       : 70,
   noteWidth : 20,
   releaseSpeed : 2,
+  attack    : 1,
   gausianEq : 0, // equation for curve calc
   options: { }
 };
@@ -106,7 +107,7 @@ vz.animate = function() {
   requestAnimationFrame(vz.animate);
 
   var currNow = new Date();
-  vz.time = vz.now - currNow;
+  vz.time = currNow - vz.now;
   
   // update particle positions and lifetime
   var vx, vy, newY;
@@ -121,11 +122,20 @@ vz.animate = function() {
     // if note is triggered then raise pixels
     if(vz.noteActive[bin%vz.notes]){
       var maxY = (vz.maxHeight - oldY) * Math.pow(vz.gausianEq, -Math.pow((binF - 0.5 - bin), 2)*vz.rho);//rho*binF*slopeEQ;
-      newY = maxY * Math.random();
+      newY = maxY * Math.random() * vz.attack;
+      if (newY < maxY) {
+        newY = maxY;
+      }
 
     // if note off, check if out of jitter range then reduce velocity 
     } else if(oldY < vz.pHeight-vz.jitter*4){
       newY = vz.releaseSpeed;
+      // check if too low on the screen
+      // var lowMax = vz.pHeight + vz.jitter*4;
+      // if (newY + oldY > lowMax) {
+      //   newY = -Math.abs(oldY - lowMax);
+      //   console.log(newY);
+      // }
     }
   
     vz.py[i] +=  newY + (Math.random() - 0.5) * vz.jitter;
