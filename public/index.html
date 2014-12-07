@@ -9,11 +9,23 @@
   <header>
     <div id="title">
       <h1>LumiKey</h1>
-      <h2>interActive Music</h2>
-    <div>
+      <h2>interActive music</h2>
+    </div>
+    <div id="options">
+      <div class="row">
+        <label>note width:</label>
+        <input type="range" name="noteWidth" min="0" max="200" value="20" oninput="optionChanged(this)">
+      </div>
+      <div class="row">
+        <label>rho:</label>
+        <input type="range" name="rho" min="0" max="100" value="70" oninput="optionChanged(this)">
+      </div>
+      <div class="row">
+        <label>release speed:</label>
+        <input type="range" name="decay" min="0" max="20" value="2" oninput="optionChanged(this)">
+      </div>
+    </div>
   </header>
-  <div id="options">
-  </div>
 
 
 
@@ -22,10 +34,11 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/javascripts/timbre.js"></script>
   <script>
+    var header =  document.getElementsByTagName('header')[0];
     setTimeout(function(){
-      document.getElementsByTagName('header')[0].setAttribute("class", "fadeOut");
+      header.setAttribute("class", "fadeOut");
       }, 4000);
-    vz.start({'width' : 1400, 'height': 700, 'notes' : 40, 'screen': document.getElementById('body')});
+    vz.start({'width' : 1440, 'height': 700, 'notes' : 40, 'screen': document.getElementById('body')});
     var socket = io();
     var offset = 40;
 
@@ -34,12 +47,12 @@
 
 
     function noteOn(noteNumber){
-      vz.triggerHit(noteNumber);
+      vz.noteOn(noteNumber);
       // synth.noteOnWithFreq(midicps.at(noteNumber), 100);
     }
 
     function noteOff(noteNumber){
-      vz.field.noteVelocity[noteNumber % vz.field.notes] = 0;
+      vz.noteOff(noteNumber);
       // synth.noteOff(noteNumber, 100);
     }
 
@@ -75,6 +88,24 @@
     };
     document.onkeyup = function(event){
       noteOff(event.keyCode);
+    }
+
+    function optionChanged(elem){
+      switch  (elem.name){
+        case 'rho':
+          vz.rho = parseInt(elem.value);
+          break;
+
+        case 'noteWidth':
+          vz.noteWidth = parseInt(elem.value);
+          break;
+
+        case 'decay':
+          vz.releaseSpeed = parseInt(elem.value);
+
+        default:
+          break;
+      }
     }
 
     // add socket listeners   
