@@ -1,3 +1,7 @@
+body{
+  font-family: 'Open Sans', sans-serif;
+}
+
 header{
   color: #eeeeee;
   -webkit-transition: all 1.5s ease;
@@ -8,6 +12,13 @@ header{
   opacity: 1;
 }
 
+h1{
+  font-weight: 700;
+}
+
+h2{
+  font-weight: 400;
+}
 
 #options{
   width: 200px;
