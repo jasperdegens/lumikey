@@ -46,7 +46,7 @@
     setTimeout(function(){
       header.setAttribute("class", "fadeOut");
       }, 4000);
-    vz.start({'width' : 1440, 'height': 700, 'notes' : 40, 'screen': document.getElementById('body')});
+    vz.start({'width' : window.innerWidth, 'height': window.innerHeight - 80, 'notes' : 66, 'screen': document.getElementById('body')});
     var socket = io();
     var offset = 40;
 
@@ -56,12 +56,12 @@
 
     function noteOn(noteNumber){
       vz.noteOn(noteNumber);
-      synth.noteOnWithFreq(midicps.at(noteNumber), 100);
+      // synth.noteOnWithFreq(midicps.at(noteNumber), 100);
     }
 
     function noteOff(noteNumber){
       vz.noteOff(noteNumber);
-      synth.noteOff(noteNumber, 100);
+      // syn  th.noteOff(noteNumber, 100);
     }
 
     function handleMidiNote(midiData){
