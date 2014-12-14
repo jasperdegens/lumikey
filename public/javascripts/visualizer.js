@@ -4,6 +4,8 @@
  * @namespace
  * @type {Object} Visualization object
  */
+
+
 var vz = {
   screen    : null,
   canvas    : null,
@@ -11,18 +13,20 @@ var vz = {
   width     : 0,
   height    : 0,
   initialized: false,
-  particles : 30000,
+  particles : 70000,
   px        : null, // particle x locations
   py        : null, // particle y locations
   pc        : null, // particle hue [0, 1]
   pl        : null, // particle life
+  pj        : null, //particle jitter
+  pv        : null, // volume at spectrum
   lifetime  : 100, // particle lifetime
   showParticles: true, // toggle to show/hide particles
   startTime : 0, // start time
   now       : 0, // current time
   frames    : 0, // number of frames rendered
-  maxHeight : 20,
-  jitter    : 2,
+  maxHeight : 20, // maximum height that 
+  jitterDefault : 2,
   notes     : 0, //number of notes
   noteActive : [], // 1 if note is on, 0 if off
   rho       : 70,
@@ -30,7 +34,21 @@ var vz = {
   releaseSpeed : 2,
   attack    : 1,
   gausianEq : 0, // equation for curve calc
+  scale     : null,
+  key       : null,
+  blue      : 0,
+  scales    :  [
+                  // 0 is minor scale from echonest api
+                  [0, 2, 3, 5, 7, 8, 10],
+                  // 1 position is major
+                  [0, 2, 4, 5, 7, 9, 11]
+                ],
   options: { }
+};
+
+vz.setScale = function(key, mode){
+  vz.scale = vz.scales[mode];
+  vz.key = key;
 };
 
 /** 
@@ -54,8 +72,14 @@ vz.spawn = function(i) {
   var offset = binF - Math.floor(binF) - 0.5;
   vz.px[i] = vz.ww * t + offset*vz.noteWidth;
   vz.py[i] = vz.pHeight + Math.random()*10;
-  vz.pc[i] = t % vz.particles;
   vz.pl[i] = vz.lifetime;
+
+  if (vz.scale) {
+    vz.pc[i] = t;
+  }
+  if (vz.blue) {
+    vz.pc[i] = t*0.25 + 0.5;
+  }
 };
 
 // shift color according to mod wheel
@@ -67,12 +91,29 @@ vz.shiftColor = function(d) {
   }
 };
 
-vz.resetColor = function(){
-  var t = i / vz.particles;
+vz.resetColor = function(i){
+  vz.pc[i] = i / vz.particles;
+};
+
+vz.resetColors = function(){
+  for (var i = 0; i < vz.particles; i++){
+    vz.resetColor(i);
+  }
+}
+
+vz.resetParticles = function(){
+  var t;
   for (var i=0; i < vz.particles; i++){
+    t = i / vz.particles;
     vz.pc[i] = t;
+    // vz.pj[i] = vz.jitterDefault;
   }
 };
+
+vz.resetKey = function(){
+  vz.key = null;
+  vz.scale = null;
+}
 
 /**
  * Resets the lifetime of particles of a certain color, triggered on strong beats
@@ -90,7 +131,11 @@ vz.resetColor = function(){
 
 vz.noteOn = function(noteNumber){
   var noteS = noteNumber % vz.notes;
-  vz.noteActive[noteS] = 1;
+  if(vz.scale && vz.scale.indexOf((noteNumber - vz.key) % 12) === -1){
+    vz.noteActive[noteS] = 2;
+  } else{
+    vz.noteActive[noteS] = 1;
+  }
 };
 
 vz.noteOff = function(noteNumber){
@@ -109,6 +154,13 @@ vz.animate = function() {
   var currNow = new Date();
   vz.time = currNow - vz.now;
   
+  // process audio
+  // if (!tune.paused) {
+  //   var spectrum = meyda.get("rms");
+  //   console.log(spectrum);
+  // };
+
+
   // update particle positions and lifetime
   var vx, vy, newY;
   for (var i = 0; i < vz.particles; i++) {
@@ -116,20 +168,33 @@ vz.animate = function() {
     //update pixel Y
     newY = 0;
     var oldY = vz.py[i];
-    var binF = (i+1)*vz.notes/vz.particles;
+    var binF = (i)*vz.notes/vz.particles;
     var bin = Math.floor(binF);
 
+    // update pixel x for noteWidth
+    var t = i / vz.particles;
+    var offset = binF - bin - 0.5;
+    vz.px[i] = vz.ww * t +  offset*vz.noteWidth;
+ 
+
     // if note is triggered then raise pixels
-    if(vz.noteActive[bin%vz.notes]){
+    if(vz.noteActive[bin%vz.notes] > 0){
       var maxY = (vz.maxHeight - oldY) * Math.pow(vz.gausianEq, -Math.pow((binF - 0.5 - bin), 2)*vz.rho);//rho*binF*slopeEQ;
       newY = maxY * Math.random() * vz.attack;
       if (newY < maxY) {
         newY = maxY;
       }
+      // vz.pj[i] = (Math.random() - 0.5) * 20;
+      if(vz.noteActive[bin%vz.notes] === 2){
+        vz.pc[i] = 0;
+        vz.pv[i] = (Math.random() - 0.5) * 40;
+      }
 
     // if note off, check if out of jitter range then reduce velocity 
-    } else if(oldY < vz.pHeight-vz.jitter*4){
+    } else if(oldY < vz.pHeight-vz.jitterDefault*4){
       newY = vz.releaseSpeed;
+      // vz.pj[i] = vz.jitterDefault;
+      vz.pv[i] = 0;
       // check if too low on the screen
       // var lowMax = vz.pHeight + vz.jitter*4;
       // if (newY + oldY > lowMax) {
@@ -138,7 +203,7 @@ vz.animate = function() {
       // }
     }
   
-    vz.py[i] +=  newY + (Math.random() - 0.5) * vz.jitter;
+    vz.py[i] +=  newY + (Math.random() - 0.5) * vz.jitterDefault; //* vz.pj[i];
     vz.pl[i]--;
     if (vz.pl[i] < 1 || vz.py[i] < 1 || vz.py[i] > vz.wh - 1) {
       vz.spawn(i);
@@ -146,7 +211,7 @@ vz.animate = function() {
   }
 
   if (vz.showParticles)
-    vz.renderParticles(vz.field, vz.px, vz.py, vz.pc, vz.pl);
+    vz.renderParticles(vz.field, vz.px, vz.py, vz.pc, vz.pl, vz.pv);
 
   // check fps
   // console.log(1000 / vz.time);
@@ -154,11 +219,22 @@ vz.animate = function() {
 };
 
 
+// vz.initAudio = function(){
+//   window.AudioContext = window.AudioContext || window.webkitAudioContext;
+//   var audioContext = new AudioContext();
+
+//   window.source = audioContext.createMediaElementSource(tune);
+//   window.source.connect(audioContext.destination);
+//   meyda = new Meyda(audioContext, source, 256);
+// }
+
 /**
  * Start visualization
  * @param options
  */
 vz.start = function (options) {
+
+  // vz.initAudio();
 
   vz.screen = options.screen;
   vz.ww = options.width;
@@ -183,6 +259,8 @@ vz.start = function (options) {
   vz.u  = new Float32Array(vz.particles);
   vz.v  = new Float32Array(vz.particles);
   vz.pl = new Int16Array(vz.particles);
+  // vz.pj = new Float32Array(vz.particles);
+  vz.pv = new Float32Array(vz.particles);
 
   vz.startTime = new Date();
   vz.now = vz.startTime;
@@ -190,13 +268,16 @@ vz.start = function (options) {
   for (var i = 0; i < vz.particles; i++) {
     vz.spawn(i);
     vz.pl[i] = Math.floor(Math.random() * vz.lifetime);
-    vz.v[i] = 0;
-    vz.u[i] = 5;
+    vz.v[i]  = 0;
+    vz.u[i]  = 5;
+    vz.pv[i] = 0;
   }
 
   for (var i = 0; i < vz.notes; i++){
     vz.noteActive[i] = 0;
   }
+
+  vz.resetParticles();
 
   vz.initialized = true;
   requestAnimationFrame(vz.animate);
@@ -229,26 +310,14 @@ vz.fadeOut = function (step) {
 };
 
 
-// Export API
-// exports.name    = vz.name;
-// exports.type    = vz.type;
-// exports.tags    = vz.tags;
-// exports.start   = vz.start;
-// exports.stop    = vz.stop;
-// exports.fadeIn  = vz.fadeIn;
-// exports.fadeOut = vz.fadeOut;
-// exports.resize  = vz.resize;
-// exports.audio   = vz.audio;
-
-
-vz.renderParticles = function(field, px, py, pc, pl) {
-  this.image = vz.context.createImageData(vz.canvas.width, vz.canvas.height);
+vz.renderParticles = function(field, px, py, pc, pl, pv) {
+  this.image = vz.context.createImageData(vz.ww, vz.canvas.height);
   var n = px.length;
   var h, s, v, r, g, b, j, f, p, q, t;
   for (var i = 0; i < n; i++) {
-    var cx = Math.floor(px[i]);
-    var cy = Math.floor(py[i]);
-    var base = 4 * (cy * vz.canvas.width + cx);
+    var cx = Math.max(Math.floor(px[i] + pv[i]), 0);
+    var cy = Math.max(Math.floor(py[i]), 10);
+    var base = 4 * (cy * vz.ww + cx);
     h = pc[i];
     s = 1-Math.min(pl[i] / (vz.lifetime*1.9), 1);
     v = 1;//pl[i] / vz.lifetime;
@@ -273,10 +342,10 @@ vz.renderParticles = function(field, px, py, pc, pl) {
     this.image.data[base    ] += Math.floor(r * 255);
     this.image.data[base + 1] += Math.floor(g * 255);
     this.image.data[base + 2] += Math.floor(b * 255);
-    this.image.data[base + 4] += Math.floor(r * 255);
-    this.image.data[base + 5] += Math.floor(g * 255);
-    this.image.data[base + 6] += Math.floor(b * 255);
-    this.image.data[base + 7]  = 255;
+      this.image.data[base + 4] += Math.floor(r * 255);
+      this.image.data[base + 5] += Math.floor(g * 255);
+      this.image.data[base + 6] += Math.floor(b * 255);
+      this.image.data[base + 7]  = 255;
   }
   vz.context.putImageData(this.image, 0, 0);
 }

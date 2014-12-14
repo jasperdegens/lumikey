@@ -1,15 +1,32 @@
 <!doctype html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
+    <title>LumiKey</title>
     <link href='http://fonts.googleapis.com/css?family=Open+Sans:700,300,400' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" href="/stylesheets/main.css">
+    <script src="/javascripts/OAuthSimple.js"></script>
+    <script src="/javascripts/jquery.js"></script>
+    <!-- // <script src="/javascripts/meyda.js"></script> -->
   </head>
   <body id="body" style="background-color:black">
+
+  <div id="overlay"></div>
+
   <header>
     <div id="title">
       <h1>LumiKey</h1>
       <h2>interActive music</h2>
+    </div>
+
+    <div id="songSearch">
+      <div class="row">
+        <input type="text" name="songName">
+        <button id="search">Load</button>
+      </div>
+      <div class="row">
+          <audio id="tune" controls  src="/Younger.mp3" type="audio/mpeg">
+          </audio>
+      </div>
     </div>
     <div id="options">
       <div class="row">
@@ -22,7 +39,7 @@
       </div>
       <div class="row">
         <label>release speed:</label>
-        <input type="range" name="decay" min="0" max="20" value="2" oninput="optionChanged(this)">
+        <input type="range" name="decay" min="0" max="7" value="2" step="0.1" oninput="optionChanged(this)">
       </div>
       <div class="row">
         <label>attack speed:</label>
@@ -34,25 +51,60 @@
       </div>
     </div>
   </header>
-
-
-
-  
+  <div id="scale">
+    <div class="row">
+      <h4 id="track">?</h4>
+      <h4 id="artist">?</h4>
+    </div>
+    <div class="row">
+      <label>key: </label>
+      <h4 id="key">?</h4>
+    </div>
+    <div id="eraseKey">reset </div>
+  </div>
   <script src="/javascripts/visualizer.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/javascripts/timbre.js"></script>
+  <!-- // <script src="/javascripts/timbre.js"></script> -->
   <script>
+
+    var echoAPI = "HFDMPVWUXJIL0K3OL";
+
+    var svnDigKey = "musichackday";
+    var svnDigSecret = "letmehack";
+
+    var svnDigBaseURL = "http://api.7digital.com/1.2/track/search?oauth_consumer_key=" + svnDigKey + "&pagesize=1&q="; 
+
+    var echoSongBaseURL = "http://developer.echonest.com/api/v4/song/search?api_key=" + echoAPI + "&format=json&sort=song_hotttnesss-desc&results=1&bucket=audio_summary&title=";
+    var echoTrackBaseURL = "http://developer.echonest.com/api/v4/track/profile?api_key=" + echoAPI + "&format=json&bucket=audio_summary&id=7digital-US:track:";
+
     var header =  document.getElementsByTagName('header')[0];
     setTimeout(function(){
       header.setAttribute("class", "fadeOut");
+      document.getElementById('scale').setAttribute('class', 'fadeOut');
       }, 4000);
-    vz.start({'width' : window.innerWidth, 'height': window.innerHeight - 80, 'notes' : 66, 'screen': document.getElementById('body')});
+    
+    var startOptions = {'width' : window.innerWidth, 'height': window.innerHeight - 80, 'notes' : 48, 'screen': document.getElementById('body')};
+
+    vz.start(startOptions);
+    
+
     var socket = io();
-    var offset = 40;
 
-    var synth = T("OscGen", {wave:"saw", mul:0.25}).play();
-    var midicps = T("midicps");
+    var keyLetters = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
+    var funky = [];
+    var house = [0, 1.3, 2, 5, 20];
+    var guitarHero = [0, 1.7, 3.3, 344, 20];
+    var pointy = [500, 0.1, 0.8, 123, 0]; // increase width for cool shiiit
+
+
+    function setMode(options){
+      vz.rho = options[0];
+      vz.attack = options[1];
+      vz.releaseSpeed = options[2];
+      vz.lifetime = options[3];
+      vz.noteWidth = options[4];
+    }
 
     function noteOn(noteNumber){
       vz.noteOn(noteNumber);
@@ -66,43 +118,48 @@
 
     function handleMidiNote(midiData){
       var note = midiData.note;
-      switch (note[0]){
+
         //note on
-        case 144:
-          noteOn(note[1]-offset);
-          break;
+        if (note[0] > 143 && note[0] < 160){
+          noteOn(note[1]);
 
+        }
         //note off
-        case 128: 
-          noteOff(note[1]-offset);
+        if (note[0] > 127 && note[0] < 144){ 
+          noteOff(note[1]);
           // console.log
-          break;
-
+        }
         // pitch wheel
-        case 224:
+        if (note[0] == 224){
           if(note[2] === 64){
-            vz.resetColor();
+            vz.resetColors();
+            vz.rho = 70;
           } else {
             vz.shiftColor(note[2]);
+            vz.rho = note[2]*500 / 127; 
           }
-          break;
-
+        }
         // modwheel + data wheel
-        case 176:
+        if(note[0] ==  176){
           // modwhee;
           if (note[1] == 1) {
-            vz.attack = note[2]*3/127;
-          } else if (note[1] == 7) {
-            vz.rho = note[2]*4 / 127;
+            vz.attack = note[2]*2/127;
+          } else if(note[1] == 7){
+            vz.noteWidth = note[2] *200 / 127
           }
-
-        default:
-          break;
         }
-    }
+      }
+        
     
     document.onkeydown = function(event){
       noteOn(event.keyCode);
+      if (event.keyCode == 49) {
+        setMode(pointy);
+      } else if (event.keyCode == 50){
+        setMode(guitarHero);
+      } else if (event.keyCode == 51){
+        setMode(house);
+      }
     };
     document.onkeyup = function(event){
       noteOff(event.keyCode);
@@ -119,7 +176,7 @@
           break;
 
         case 'decay':
-          vz.releaseSpeed = parseInt(elem.value);
+          vz.releaseSpeed = parseFloat(elem.value);
           break;
 
         case 'attack':
@@ -135,11 +192,100 @@
       }
     }
 
+    $('#eraseKey').on('click', function(){
+      // vz.stop();
+      vz.resetKey();
+      document.getElementById('key').innerHTML = '?';
+      document.getElementById('track').innerHTML = '?';
+      document.getElementById('artist').innerHTML = '?';
+      setTimeout(function(){
+        $('#scale').removeClass('noFade');
+      }, 1000);
+      // vz.start(startOptions);
+      vz.blue = 0;
+    });
+
+    // handler for clearing minor hue
+    $('#search').on('click', function(){
+      getTrack();
+    });
+
     // add socket listeners   
     socket.on('midiNote', handleMidiNote);
     socket.on('command', function(data){
         console.log(data);
       }); 
+
+
+    function getTrack(){
+      var name = $("input[name='songName']").val();
+      // get id of song from echonest
+
+      $.getJSON(svnDigBaseURL + name, function(json, textStatus) {
+          // if song exists, get track data
+          // json.response.
+          if(json.searchResults){
+            var res = json.searchResults.searchResult[0].track;
+            var id = res.id;
+            document.getElementById('track').innerHTML = res.title;
+            console.log(res); 
+            document.getElementById('artist').innerHTML = res.artist.name;
+            $('#scale').addClass('noFade');
+
+            $.getJSON(echoTrackBaseURL + id, function(echoData, textStatus){
+              console.log(echoData);
+              if (echoData.response && echoData.response.track && echoData.response.track.audio_summary && echoData.response.track.audio_summary.key) {
+                processSongInfo(echoData.response.track.audio_summary);
+              };
+            });       
+
+            var oathSimpleString = OAuthSimple(svnDigKey, svnDigSecret);
+            var signURL = oathSimpleString.sign({
+              action: 'GET',
+              path: 'https://stream.svc.7digital.net/stream/catalogue',
+              parameters : {
+                formatid : 26,
+                userid : 'jd',
+                trackid : id,
+                country : 'US'
+              }
+            }).signed_url;
+            tune.src = signURL;
+          }
+      });
+    }
+
+    function processSongInfo(data){
+      console.log(data);
+      vz.setScale(data.key, data.mode);
+      document.getElementById('key').innerHTML = data.mode ? keyLetters[data.key]: keyLetters[data.key] + 'm';
+    
+      // configure vz settings
+      var energy = data.energy;
+      var dancy  = data.dancability;
+      var tempo  = data.tempo;
+      var loudness = data.loudness;
+
+      if (energy < .7) {
+        setMode(pointy);
+      };
+      if (energy > .7) {
+        setMode(guitarHero);
+      };
+      if (loudness > -3) {
+        setMode(house);
+      };
+
+      //set to blue scheme if minor
+      if(!data.mode){
+        vz.blue = 1;
+      } else {
+        vz.blue = 0;
+      }
+                      
+
+    }
+
   </script>
   </body>
 </html>

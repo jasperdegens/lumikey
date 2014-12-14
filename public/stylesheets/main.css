@@ -1,6 +1,33 @@
 body{
   font-family: 'Open Sans', sans-serif;
   position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+#overlay{
+  width: 100%;
+  height: 100%;
+  background-color: rgba(200, 200, 200, .5);
+  display: none;
+  position: fixed;
+}
+
+#songSearch{
+  left: 45%;
+  width: 200px;
+  position: absolute;
+  top: 16px;
+}
+
+#songSearch input{
+  float: left;
+  width: 50%;
+}
+
+#songSearch button{
+  float: left;
+  margin-left: 10px;
 }
 
 header{
@@ -34,6 +61,7 @@ h2{
   background-image: -webkit-gradient( linear, left top, right top, color-stop(0, #f22), color-stop(0.15, #f2f), color-stop(0.3, #22f), color-stop(0.45, #2ff), color-stop(0.6, #2f2),color-stop(0.75, #2f2), color-stop(0.9, #ff2), color-stop(1, #f22) );
   background-image: gradient( linear, left top, right top, color-stop(0, #f22), color-stop(0.15, #f2f), color-stop(0.3, #22f), color-stop(0.45, #2ff), color-stop(0.6, #2f2),color-stop(0.75, #2f2), color-stop(0.9, #ff2), color-stop(1, #f22) );
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: rgba(200, 200, 200, .6);
   display: inline-block;
   opacity: .6;
@@ -45,6 +73,27 @@ h3{
   text-align: center;
   margin: 10px 0;
   font-weight: 100;
+}
+
+h4{
+  color: #eeeeee;
+  font-size: 15px;
+  font-weight: 700;
+  width: 45%;
+  margin: 0;
+  margin-top: -1px;
+  display: inline-block;
+}
+
+#eraseKey{
+  text-align: right;
+  color: #eeeeee;
+  width: 46%;
+  font-size: 12px;
+  padding-right: 10px;
+}
+#eraseKey:hover{
+  color: #2a91e1;
 }
 
 hr{
@@ -64,9 +113,42 @@ hr{
   background-color: rgba(60, 60, 60, .2);/*#171717;*/
 }
 
+#scale{
+  width: 200px;
+  position: absolute;
+  right: 200px;
+  top: 0;
+  padding: 10px 0 10px 20px;
+  -webkit-transition: all 0.5s ease;
+   -moz-transition: all 0.5s ease;
+    -ms-transition: all 0.5s ease;
+     -o-transition: all 0.5s ease;
+        transition: all 0.5s ease;
+}
+
+#scale label{
+  padding-top: 2px;
+}
+
+#track{
+  text-align: right;
+  padding-right: 10px;
+  font-size: 11px; 
+  font-weight: 100;
+}
+
+#artist{
+  font-size: 10px;
+  font-weight: 700;
+}
+
 input[type="range"]{
   width: 80px;
   margin-top: 2px;
+}
+
+audio{
+  margin-left: -80px;
 }
 
 label{
@@ -80,6 +162,10 @@ label{
 
 .fadeOut{
   opacity: 0;
+}
+
+.noFade{
+  opacity: 1;
 }
 
 header:hover{
