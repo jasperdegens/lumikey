@@ -13,7 +13,7 @@ var vz = {
   width     : 0,
   height    : 0,
   initialized: false,
-  particles : 70000,
+  particles : 50000,
   px        : null, // particle x locations
   py        : null, // particle y locations
   pc        : null, // particle hue [0, 1]
