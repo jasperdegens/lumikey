@@ -16,9 +16,11 @@
     <div id="title">
       <h1>LumiKey</h1>
       <h2>interActive music</h2>
+      <p>Input: <span id="input"></span></p>
     </div>
 
-    <div id="songSearch">
+    <!-- This is div to allow searching for songs -->
+    <!-- <div id="songSearch">
       <div class="row">
         <input type="text" name="songName">
         <button id="search">Load</button>
@@ -27,7 +29,7 @@
           <audio id="tune" controls  src="/Younger.mp3" type="audio/mpeg">
           </audio>
       </div>
-    </div>
+    </div> -->
     <div id="options">
       <div class="row">
         <label>note width:</label>
@@ -85,10 +87,10 @@
     
     var startOptions = {'width' : window.innerWidth, 'height': window.innerHeight - 80, 'notes' : 48, 'screen': document.getElementById('body')};
 
-    vz.start(startOptions);
+    // vz.start(startOptions);
     
 
-    var socket = io();
+    // var socket = io();
 
     var keyLetters = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
@@ -117,7 +119,7 @@
     }
 
     function handleMidiNote(midiData){
-      var note = midiData.note;
+      var note = midiData.data;
 
         //note on
         if (note[0] > 143 && note[0] < 160){
@@ -211,10 +213,10 @@
     });
 
     // add socket listeners   
-    socket.on('midiNote', handleMidiNote);
-    socket.on('command', function(data){
-        console.log(data);
-      }); 
+    // socket.on('midiNote', handleMidiNote);
+    // socket.on('command', function(data){
+    //     console.log(data);
+    //   }); 
 
 
     function getTrack(){
@@ -285,6 +287,38 @@
                       
 
     }
+
+    var midi = null;  // global MIDIAccess object
+
+    function midiInputsChanged(connectionEvent){
+      console.log(connectionEvent);
+
+      // if connection then show connected keyboard
+      var portElem = document.getElementById('input');
+      if (midi.inputs.size > 0) {
+        // for now just grab first port
+        var port = midi.inputs.values().next().value;
+        console.log(port);
+        portElem.innerHTML = port.name;
+      } else {
+        portElem.innerHTML = "empty";
+      }
+
+    }
+
+    function onMIDISuccess(midiAccess) {
+      midi = midiAccess;  // store in the global (in real usage, would probably keep in an object instance)
+      midi.onstatechange = midiInputsChanged;
+      midiAccess.inputs.forEach( function(entry) {entry.onmidimessage = handleMidiNote;});
+    }
+
+    function onMIDIFailure(msg) {
+      console.log( "Failed to get MIDI access - " + msg );
+    }
+
+    navigator.requestMIDIAccess().then( onMIDISuccess, onMIDIFailure );
+
+
 
   </script>
   </body>

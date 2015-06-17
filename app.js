@@ -8,21 +8,21 @@ var bodyParser = require('body-parser');
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
-var midi = require('midi');
+// var midi = require('midi');
 
-var input = new midi.input();
+// var input = new midi.input();
 
 // Count the available input ports.
-if (input.getPortCount) {
-    try{
-    // Get the name of a specified input port.
-    input.getPortName(0);
-    input.openPort(0);
-    }
-    catch(e){
-        console.log('could not connect to midi device');
-    }
-};
+// if (input.getPortCount) {
+//     try{
+//     // Get the name of a specified input port.
+//     input.getPortName(0);
+//     input.openPort(0);
+//     }
+//     catch(e){
+//         console.log('could not connect to midi device');
+//     }
+// };
 
 
 
