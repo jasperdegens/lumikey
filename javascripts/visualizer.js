@@ -243,6 +243,8 @@ vz.start = function (options) {
   vz.pHeight = vz.wh*7/8;
   vz.gausianEq = (1/(Math.sqrt(2*Math.PI)))*Math.E;
 
+  vz.particles = options.particles;
+
   vz.canvas = document.createElement('canvas');
   vz.screen.appendChild(vz.canvas);
 

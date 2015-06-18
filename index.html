@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="stylesheets/main.css">
     <script src="javascripts/jquery.js"></script>
     <!-- // <script src="/javascripts/meyda.js"></script> -->
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
   </head>
   <body id="body" style="background-color:black">
 
@@ -16,6 +17,26 @@
       <h1>LumiKey</h1>
       <h2>interActive music</h2>
       <p>Input: <span id="input"></span></p>
+      <select name="outputPorts" id="outputPorts">
+      </select>
+      <select name="channel" id="channel">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
+      </select>
     </div>
 
     <!-- This is div to allow searching for songs -->
@@ -54,12 +75,20 @@
   </header>
 
   <script src="javascripts/visualizer.js"></script>
+  <script src="javascripts/hammer.js"></script>
   <!-- // <script src="/socket.io/socket.io.js"></script> -->
   <!-- // <script src="/javascripts/timbre.js"></script> -->
   <script>
 
+
     
-    var startOptions = {'width' : window.innerWidth, 'height': window.innerHeight - 100, 'notes' : 48, 'screen': document.getElementById('body')};
+    var numNotes = 48;
+    var numParticles = 50000;
+    // check width of device and perform changes on notes and particle nums
+    deviceOptimization();
+
+
+    var startOptions = {'width' : window.innerWidth, 'height': window.innerHeight - 150, 'notes' : numNotes, 'particles' : numParticles, 'screen': document.getElementById('body')};
 
     vz.start(startOptions);
     
@@ -73,6 +102,23 @@
     var guitarHero = [0, 1.7, 3.3, 344, 20];
     var pointy = [500, 0.1, 0.8, 123, 0]; // increase width for cool shiiit
 
+    // optimize note and particle numbers for devices
+    function deviceOptimization(){
+      var width = window.innerWidth;
+      if (width < 480){
+        numNotes = 12;
+        numParticles = 1000;
+      } else if (width < 768) {
+        numNotes = 16;
+        numParticles = 5000;
+      } else if (width < 992) {
+        numNotes = 22;
+        numParticles = 10000;
+      } else {
+        numNotes = 48;
+        numParticles = 50000;
+      }
+    }
 
     function setMode(options){
       vz.rho = options[0];
@@ -95,13 +141,13 @@
     function handleMidiNote(midiData){
       var note = midiData.data;
 
-        //note on
-        if (note[0] > 143 && note[0] < 160){
+        //note on for all channels
+        if (note[0] >= 0x90 && note[0] < 0xa0){
           noteOn(note[1]);
 
         }
-        //note off
-        if (note[0] > 127 && note[0] < 144){ 
+        //note off for all channels
+        if (note[0] >= 0x80 && note[0] < 0x90){ 
           noteOff(note[1]);
           // console.log
         }
@@ -170,6 +216,8 @@
 
 
     var midi = null;  // global MIDIAccess object
+    var output = null;
+    var channelOut = 1;
 
     function midiInputsChanged(connectionEvent){
       console.log(connectionEvent);
@@ -185,10 +233,39 @@
         portElem.innerHTML = "empty";
       }
 
+        var outputs = midi.outputs;
+        // add each of the output ports to a <select> box
+        var outputsSelect = document.getElementById('outputPorts');
+        outputsSelect.innerHTML = '';
+        outputs.forEach( function( port ) {
+          var opt = document.createElement("option");
+          opt.text = port.name;
+          outputsSelect.add(opt);
+        });
+
+        // set detault output to first available
+        output = outputs.values().next().value;
+        // sendOutput();
+    }
+
+    function sendOutput(){
+      setTimeout(function(){
+        var note = [0x90+(channelOut-1), 60, 0x7f];
+        console.log(note);
+        output.send(note);
+        output.send( [0x80+(channelOut-1), 60, 0x40], window.performance.now() + 1000.0 );
+        sendOutput();
+      }, 2000);
+    }
+
+    function midiMessage (message) {
+      handleMidiNote(message);
+      // add channel info to message
+      output.send(addChannel(message));
     }
 
     function onMIDISuccess(midiAccess) {
-      midi = midiAccess;  // store in the global (in real usage, would probably keep in an object instance)
+      midi = midiAccess;
       midi.onstatechange = midiInputsChanged;
       midiAccess.inputs.forEach( function(entry) {entry.onmidimessage = handleMidiNote;});
     }
@@ -197,8 +274,69 @@
       console.log( "Failed to get MIDI access - " + msg );
     }
 
+
+    // encode channel into midi command
+    function addChannel(midiCommand){
+      return [midiCommand[0]+(channelOut-1), midiCommand[1], midiCommand[2]];
+    }
+
     navigator.requestMIDIAccess().then( onMIDISuccess, onMIDIFailure );
 
+    function selectChanged(event){
+      var elem = event.target;
+      switch (elem.id) {
+        case "channel":
+          channelOut = parseInt(elem.value);
+          break;
+
+        case "outputPorts":
+          output = midi.outputs.get(elem.value);
+          break;
+
+        default:
+          break;
+      }
+    }
+
+    var lastPannedNote = -100;
+    
+    function panHandler(event){
+      if (event.type == 'panend') {
+        noteOff(lastPannedNote);
+        return;
+      };
+
+      var pannedNote = Math.floor(event.center.x * numNotes / window.innerWidth);
+      if (pannedNote == lastPannedNote) {
+        return;
+      } 
+      noteOn(pannedNote);
+      // turn last note off after half a second
+      setTimeout(function(note){
+        return function (){ 
+          noteOff(note);
+        };
+      }(lastPannedNote), 200);
+
+      lastPannedNote = pannedNote;
+    }
+
+    function tapHandler(event){
+      console.log("tapped!!!");
+    }
+
+    window.addEventListener('load', function(){
+      document.getElementById('channel').addEventListener('change', selectChanged);
+      document.getElementById('outputPorts').addEventListener('change', selectChanged);
+
+      // add hammer recognisers
+      var touchHandler = new Hammer(document.getElementById('body'));
+      touchHandler.get('pan').set({direction : Hammer.DIRECTION_HORIZONTAL, threshold: 50});
+      touchHandler.on('pan panend', panHandler);
+      touchHandler.on('tap', tapHandler);
+
+
+    }, false)
 
 
   </script>
